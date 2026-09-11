@@ -16,8 +16,9 @@
 
 import { Elysia } from "elysia";
 import { messages } from "../elysia/messages";
+import { projects } from "../elysia/projects";
 
-const app = new Elysia({ prefix: "/api" }).use([messages]);
+const app = new Elysia({ prefix: "/api" }).use([messages, projects]);
 
 export const GET = app.fetch;
 export const POST = app.fetch;

@@ -1,9 +1,11 @@
-import { Button } from "@/components/ui/button";
+"use client";
+
+import { AIChatbox } from "@/components/ai-chatbox";
 
 export default function Page() {
   return (
     <div>
-      <Button>click</Button>
+      <AIChatbox />
     </div>
   );
 }
