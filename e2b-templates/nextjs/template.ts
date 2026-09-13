@@ -18,3 +18,4 @@ export const template = Template()
   .runCmd("npx --yes shadcn@4.21.0 init --silent --defaults")
   .runCmd("npx --yes shadcn@4.21.0 add --all --yes")
   .setStartCmd("npx next dev --turbopack", waitForURL("http://localhost:3000"));
+  
