@@ -10,7 +10,7 @@ import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { IconCode, IconWorld } from "@tabler/icons-react";
 import { MessagesContainer } from "./messages-container";
-//import FileExplorer from "./file-explorer";
+import FileExplorer from "./file-explorer";
 import { CodeWebView } from "./code-web-view";
 
 interface Props {
@@ -61,12 +61,12 @@ export function ProjectView({ projectId, initialMessages }: Props) {
             {!!activeCodeFragment && <CodeWebView data={activeCodeFragment} />}
           </TabsContent>
           <TabsContent value="code">
-            {/* <FileExplorer
+            <FileExplorer
               files={activeCodeFragment?.files as Record<string, string>}
               fragmentId={activeCodeFragment?.id as string}
               projectId={projectId}
               sandboxId={activeCodeFragment?.sandboxId as string}
-            /> */}
+            />
           </TabsContent>
         </Tabs>
       </ResizablePanel>
