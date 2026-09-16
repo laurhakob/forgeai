@@ -115,7 +115,7 @@ export const codeAgentFunction = inngest.createFunction(
       system:
         "You create short, product-like project names (5 - 10 words, Title Case). Return ONLY the name",
       model: openai({
-        model: "gpt-5.2",
+        model: "gpt-5.6-luna",
       }),
     });
 
@@ -143,8 +143,11 @@ export const codeAgentFunction = inngest.createFunction(
       name: "coding agent",
       system: PROMPT,
       description: "An expert coding agent",
+      // This agent uses function tools, which agent-kit sends via
+      // /v1/chat/completions. The gpt-5.6-* models reject that combination
+      // unless reasoning_effort is "none", so use a model that supports both.
       model: openai({
-        model: "gpt-5.2",
+        model: "gpt-5.4",
       }),
 
       tools: [
@@ -491,19 +494,3 @@ export const codeAgentFunction = inngest.createFunction(
     };
   },
 );
-
-// import { inngest } from "./client";
-
-// export const codeAgent = inngest.createFunction(
-//   { id: "code-agent" },
-//   { event: "code-agent/codeAgent.run" },
-//   async ({ event, step }) => {
-//     await step.sleep("download-video", "10s");
-
-//     await step.sleep("transcribe-video", "10s");
-
-//     await step.sleep("summersize-video", "10s");
-
-//     return { message: `Hello ${event.data.email}!` };
-//   }
-// );

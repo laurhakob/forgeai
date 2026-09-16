@@ -12,7 +12,8 @@ import { IconFolders, IconLoader2 } from "@tabler/icons-react";
 import { SaveIcon } from "lucide-react";
 import { toast } from "sonner";
 import { apiClient } from "@/lib/api-client";
-import { Protect } from "@clerk/nextjs";
+import { Show, useClerk } from "@clerk/nextjs";
+import { useRouter } from "next/navigation";
 import {
   Dialog,
   DialogClose,
@@ -46,6 +47,18 @@ export default function FileExplorer({
   const [localFiles, setLocalFiles] = useState<FileCollection>({});
   const [isLoading, setIsLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
+
+  const clerk = useClerk();
+  const router = useRouter();
+
+  // Checkout only updates Clerk's servers. The session token still carries the
+  // old plan/feature claims, so <Show> keeps rendering the previous plan until
+  // the session is reloaded.
+  const refreshBillingState = async () => {
+    clerk.session?.clearCache();
+    await clerk.session?.reload();
+    router.refresh();
+  };
 
   const mergedFiles = useMemo(
     () => ({ ...files, ...localFiles }),
@@ -101,8 +114,8 @@ export default function FileExplorer({
                 >
                   <IconFolders className="size-4" />
                 </Button>
-                <Protect
-                  feature="inline_code_edit"
+                <Show
+                  when={{ feature: "inline_code_edit" }}
                   fallback={
                     <Button
                       className="p-1 h-5 w-5 border-none rounded-full cursor-pointer"
@@ -128,7 +141,7 @@ export default function FileExplorer({
                       <SaveIcon className="size-4" />
                     )}
                   </Button>
-                </Protect>
+                </Show>
               </div>
               <div className="flex flex-1 overflow-auto h-full w-full">
                 <CodeView
@@ -164,6 +177,7 @@ export default function FileExplorer({
             <CheckoutButton
               planId="cplan_38YBTL0vjqUlBGtbOBiNJYpRskb"
               planPeriod="month"
+              onSubscriptionComplete={refreshBillingState}
             >
               <Button
                 type="button"

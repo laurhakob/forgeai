@@ -1,4 +1,4 @@
- import { ProjectView } from "@/components/project-view";
+import { ProjectView } from "@/components/project-view";
 import { getApiClient } from "@/lib/api-client";
 import { headers } from "next/headers";
 
@@ -15,9 +15,5 @@ export default async function ProjectPage({
 
   const { data } = await apiClient.messages.get({ query: { projectId: id } });
 
-  return (
-  <ProjectView projectId={id} initialMessages={data} />
-  )
-  
-  
+  return <ProjectView projectId={id} initialMessages={data} />;
 }

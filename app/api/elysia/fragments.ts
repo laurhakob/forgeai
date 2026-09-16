@@ -2,11 +2,11 @@ import { db } from "@/lib/db";
 import { getSandbox, toProjectPath } from "@/lib/sandbox";
 import Elysia from "elysia";
 import { z } from "zod";
-//import { clerkPlugin } from "elysia-clerk";
+import { clerk } from "./clerk";
 import { requirePro } from "@/lib/pro-feature";
 
 export const fragments = new Elysia({ prefix: "/fragments" })
- // .use(clerkPlugin())
+  .use(clerk())
   .patch(
     "/:fragmentId",
     async ({ body, params, auth, status }) => {
@@ -14,7 +14,8 @@ export const fragments = new Elysia({ prefix: "/fragments" })
 
       if (!userId) return status(401, { error: "Unauthorized" });
 
-      await requirePro(auth, status, "inline_code_edit");
+      const denied = requirePro(auth, status, "inline_code_edit");
+      if (denied) return denied;
 
       const existingFragment = await db.codeFragment.findUnique({
         where: { id: params.fragmentId },

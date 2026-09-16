@@ -64,7 +64,7 @@ export async function extractDesignSpecFromImage(params: {
   userHint: string | null;
 }) {
   const response = await openai.chat.completions.parse({
-    model: "gpt-4o-2024-08-06",
+    model: "gpt-5.4",
     messages: [
       {
         role: "system",

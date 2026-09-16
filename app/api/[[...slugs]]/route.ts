@@ -13,4 +13,3 @@ export const DELETE = app.fetch;
 export const OPTIONS = app.fetch;
 
 export type App = typeof app;
-

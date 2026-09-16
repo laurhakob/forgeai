@@ -1,34 +1,22 @@
-// import Elysia from "elysia";
-
-// export const projects = new Elysia({ prefix: "/projects" }).post(
-//   "/",
-//   async () => {
-//     return { messages: "Hello from Elysia js in Next" };
-//   }
-// );
-
-
-
-
-
 import { inngest } from "@/inngest/client";
 import { db } from "@/lib/db";
 import Elysia from "elysia";
 import { z } from "zod";
-// import { clerkPlugin } from "elysia-clerk";
-// import { requirePro } from "@/lib/pro-feature";
+import { clerk } from "./clerk";
+import { requirePro } from "@/lib/pro-feature";
 
 export const projects = new Elysia({ prefix: "/projects" })
- // .use(clerkPlugin())
+  .use(clerk())
   .post(
     "/",
-    async ({ body }) => {
-   //   const { userId } = auth();
+    async ({ auth, body, status }) => {
+      const { userId } = auth();
 
-     // if (!userId) return status(401, { error: "Unauthorized" });
+      if (!userId) return status(401, { error: "Unauthorized" });
 
       if (body.imageUrl) {
-      //  await requirePro(auth, status, "screenshot_upload");
+        const denied = requirePro(auth, status, "screenshot_upload");
+        if (denied) return denied;
       }
 
       const createdProject = await db.project.create({
@@ -53,7 +41,7 @@ export const projects = new Elysia({ prefix: "/projects" })
           message: body.message,
           projectId: createdProject.id,
           imageUrl: body.imageUrl,
-        //  userId,
+          userId,
         },
       });
 
@@ -69,15 +57,39 @@ export const projects = new Elysia({ prefix: "/projects" })
       }),
     },
   )
-  .get("/", async ({ }) => {
-    // const { userId } = auth();
+  .get("/", async ({ auth, status }) => {
+    const { userId } = auth();
 
-    // if (!userId) return status(401, { error: "Unauthorized" });
+    if (!userId) return status(401, { error: "Unauthorized" });
 
     const userProjects = await db.project.findMany({
-    //  where: { userId },
+      where: { userId },
       orderBy: { updatedAt: "desc" },
     });
 
     return userProjects;
-  });
+  })
+  .delete(
+    "/:projectId",
+    async ({ auth, params, status }) => {
+      const { userId } = auth();
+
+      if (!userId) return status(401, { error: "Unauthorized" });
+
+      // Scope the delete to the owner so a valid session cannot remove
+      // another user's project by guessing an id. Messages and their code
+      // fragments cascade (see schema.prisma).
+      const { count } = await db.project.deleteMany({
+        where: { id: params.projectId, userId },
+      });
+
+      if (count === 0) return status(404, { error: "Project not found" });
+
+      return { id: params.projectId };
+    },
+    {
+      params: z.object({
+        projectId: z.string().min(3, "Project Id is required"),
+      }),
+    },
+  );

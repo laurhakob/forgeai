@@ -1,32 +1,18 @@
-// import Elysia from "elysia";
-
-// export const messages = new Elysia({ prefix: "/messages" }).get(
-//   "/",
-//   async () => {
-//     return { messages: "Hello from Elysia js in Next" };
-//   }
-// ).post('/', async () => {
-//   return {}
-// })
-
-
-
-
 import { inngest } from "@/inngest/client";
 import { db } from "@/lib/db";
 import Elysia from "elysia";
 import z from "zod";
-// import { clerkPlugin } from "elysia-clerk";
-// import { requirePro } from "@/lib/pro-feature";
+import { clerk } from "./clerk";
+import { requirePro } from "@/lib/pro-feature";
 
 export const messages = new Elysia({ prefix: "/messages" })
- // .use(clerkPlugin())
+  .use(clerk())
   .get(
     "/",
-    async ({ query }) => {
-    //  const { userId } = auth();
+    async ({ auth, status, query }) => {
+      const { userId } = auth();
 
-    //  if (!userId) return status(401, { error: "Unauthorized" });
+      if (!userId) return status(401, { error: "Unauthorized" });
 
       const messages = await db.message.findMany({
         where: { projectId: query.projectId },
@@ -44,13 +30,14 @@ export const messages = new Elysia({ prefix: "/messages" })
   )
   .post(
     "/",
-    async ({ body }) => {
-    //  const { userId } = auth();
+    async ({ auth, status, body }) => {
+      const { userId } = auth();
 
-     // if (!userId) return status(401, { error: "Unauthorized" });
+      if (!userId) return status(401, { error: "Unauthorized" });
 
       if (body.imageUrl) {
-     //   await requirePro(auth, status, "screenshot_upload");
+        const denied = requirePro(auth, status, "screenshot_upload");
+        if (denied) return denied;
       }
 
       const createdMessage = await db.message.create({
@@ -60,14 +47,14 @@ export const messages = new Elysia({ prefix: "/messages" })
           type: "RESULT",
           projectId: body.projectId,
           imageUrl: body.imageUrl,
-         // userId,
+          userId,
         },
       });
 
       await inngest.send({
         name: "code-agent/codeAgent.run",
         data: {
-        //  userId,
+          userId,
           projectId: body.projectId,
           message: createdMessage.content,
           imageUrl: body.imageUrl,

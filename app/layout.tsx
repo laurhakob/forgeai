@@ -1,20 +1,42 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
+import { ClerkProvider } from "@clerk/nextjs";
 import "./globals.css";
-import { cn } from "cn";
+import { Toaster } from "@/components/ui/sonner";
+import { cn } from "@/lib/utils";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
 export const metadata: Metadata = {
-  title: "Forgeai",
+  title: {
+    default: "Forgeai — build something great",
+    template: "%s · Forgeai",
+  },
   description:
-    "Build something greate with Forgeai that work the way you want.",
+    "Upload a design image or screenshot, or simply chat, and get a production-ready, beautiful application back.",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
   return (
-    <html lang="en" className={cn(inter.variable, "scroll-smooth")}>
-      <body className="min-h-full flex flex-col">{children}</body>
-    </html>
+    <ClerkProvider
+      appearance={{
+        variables: {
+          // Matches the indigo→fuchsia accent used across the marketing pages.
+          colorPrimary: "#4f46e5",
+          borderRadius: "0.75rem",
+        },
+      }}
+    >
+      <html lang="en" className={cn(inter.variable, "scroll-smooth")}>
+        <body>
+          {children}
+          <Toaster richColors />
+        </body>
+      </html>
+    </ClerkProvider>
   );
 }
