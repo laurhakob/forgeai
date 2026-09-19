@@ -1,6 +1,6 @@
 "use server";
 
-import { inngest } from "@/inngest/client";
+import { inngest, inngestApiBaseUrl } from "@/inngest/client";
 
 import { projectChannel } from "@/inngest/functions";
 import { db } from "@/lib/db";
@@ -31,5 +31,15 @@ export async function fetchRealtimeSubscriptionToken(
     topics: ["projectInfo"] as const,
   });
 
-  return token;
+  // @inngest/realtime@0.4.7 resolves the websocket host from its own env
+  // helper, which is broken under Turbopack: it sees the `import.meta.env` shim
+  // Next injects, takes that branch, and finds neither INNGEST_DEV nor NODE_ENV
+  // there (Vite calls it MODE). Both come back undefined, so it assumes local
+  // and connects to ws://localhost:8288 from every deployment.
+  //
+  // `app.apiBaseUrl` on the token is read before any of that, so resolving the
+  // host here — on the server, where env vars actually work — is what makes the
+  // subscription connect. `app` is undeclared on the Token type but is what the
+  // subscribe helper reads, hence the cast.
+  return { ...token, app: { apiBaseUrl: inngestApiBaseUrl } } as ProjectChannelToken;
 }
