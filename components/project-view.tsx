@@ -26,7 +26,7 @@ export function ProjectView({ projectId, initialMessages }: Props) {
   return (
     <ResizablePanelGroup
       className="h-dvh w-dvw overflow-hidden"
-      // direction="horizontal"
+      orientation="horizontal"
       id="project-view-layout"
     >
       <ResizablePanel defaultSize={20} minSize={20}>
@@ -58,7 +58,7 @@ export function ProjectView({ projectId, initialMessages }: Props) {
           </div>
 
           <TabsContent value="preview">
-            {!!activeCodeFragment && <CodeWebView data={activeCodeFragment} />}
+            {!!activeCodeFragment && <CodeWebView data={activeCodeFragment} projectId={projectId} />}
           </TabsContent>
           <TabsContent value="code">
             <FileExplorer

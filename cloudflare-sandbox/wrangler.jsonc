@@ -1,0 +1,54 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "forgeai-sandbox",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-19",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": {
+    "enabled": true
+  },
+  "vars": {
+    // "tunnel" serves previews over free *.trycloudflare.com quick tunnels and
+    // needs no DNS setup. Switch to "exposePort" once a custom domain with a
+    // wildcard record points at this worker.
+    "PREVIEW_MODE": "tunnel",
+    // Only read when PREVIEW_MODE is "exposePort". Empty derives the hostname
+    // from the incoming request.
+    "PREVIEW_HOSTNAME": "",
+    "BACKUP_BUCKET_NAME": "forgeai-sandbox-backups",
+    "BACKUP_BUCKET_ENDPOINT": "https://ddfa208f3f81d98c16e40b9da208c626.r2.cloudflarestorage.com",
+    "CLOUDFLARE_ACCOUNT_ID": "ddfa208f3f81d98c16e40b9da208c626"
+  },
+  // Snapshots of /home/user/project live here. The SDK reaches R2 over S3, so
+  // R2_ACCESS_KEY_ID / R2_SECRET_ACCESS_KEY must also be set as secrets.
+  "r2_buckets": [
+    {
+      "binding": "BACKUP_BUCKET",
+      "bucket_name": "forgeai-sandbox-backups"
+    }
+  ],
+  "containers": [
+    {
+      "class_name": "Sandbox",
+      "image": "./Dockerfile",
+      // 2 vCPU / 8 GiB — matches the old e2b template (2 CPU / 4096 MB)
+      // with headroom for `next dev`.
+      "instance_type": "standard-3",
+      "max_instances": 10
+    }
+  ],
+  "durable_objects": {
+    "bindings": [
+      {
+        "class_name": "Sandbox",
+        "name": "Sandbox"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "new_sqlite_classes": ["Sandbox"],
+      "tag": "v1"
+    }
+  ]
+}

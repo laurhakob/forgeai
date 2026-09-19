@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { getSandbox, toProjectPath } from "@/lib/sandbox";
+import { ensureSandbox, toProjectPath, type SandboxBackup } from "@/lib/sandbox";
 import Elysia from "elysia";
 import { z } from "zod";
 import { clerk } from "./clerk";
@@ -28,7 +28,17 @@ export const fragments = new Elysia({ prefix: "/fragments" })
 
       if (!sandboxId) throw new Error("Missing sandbox Id");
 
-      const sandbox = await getSandbox(sandboxId);
+      // The container may have idled out since the fragment was generated, so
+      // wake it and restore the project before writing into it.
+      const project = await db.project.findUnique({
+        where: { id: body.projectId },
+        select: { sandboxBackup: true },
+      });
+
+      const { sandbox } = await ensureSandbox(sandboxId, {
+        backup: project?.sandboxBackup as SandboxBackup | null,
+        url: false,
+      });
 
       const entries = Object.entries(body.files);
 

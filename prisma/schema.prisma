@@ -24,6 +24,13 @@ model Project {
   name      String
   messages  Message[]
   sandboxId String?   @db.VarChar(64)
+  // Quick-tunnel URLs change every time the container restarts, so this is a
+  // cache to be refreshed rather than a stable address.
+  sandboxUrl String?
+  // Opaque handle from the sandbox worker's `backup` action. Cloudflare
+  // containers wipe their filesystem when they idle out, so this is what the
+  // project is restored from on a cold start.
+  sandboxBackup Json?
   imageUrl  String?
   userId    String
   createdAt DateTime  @default(now())

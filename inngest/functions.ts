@@ -9,8 +9,14 @@ import {
   Tool,
 } from "@inngest/agent-kit";
 import { inngest } from "./client";
-import Sandbox from "@e2b/code-interpreter";
-import { getSandbox, toProjectPath } from "@/lib/sandbox";
+import {
+  createSandboxBackup,
+  ensureSandbox,
+  getSandbox,
+  sandboxIdForProject,
+  toProjectPath,
+  type SandboxBackup,
+} from "@/lib/sandbox";
 import { z } from "zod";
 import { PROMPT, TITLE_PROMPT } from "./prompt";
 import { db } from "@/lib/db";
@@ -31,8 +37,6 @@ export const projectChannel = channel(
   (projectId: string) => `Project:${projectId}`,
 ).addTopic(topic("projectInfo").type<string>());
 
-const TIMEOUT_MS = 60 * 60 * 1000;
-
 export const codeAgentFunction = inngest.createFunction(
   {
     id: "code-agent",
@@ -46,27 +50,28 @@ export const codeAgentFunction = inngest.createFunction(
     const sandboxId = await step.run("get-or-create-sandbox", async () => {
       const project = await db.project.findUnique({
         where: { id: event.data.projectId },
-        select: { sandboxId: true },
+        select: { sandboxId: true, sandboxBackup: true },
       });
 
-      if (project?.sandboxId) {
-        const sandbox = await Sandbox.connect(project.sandboxId, {
-          timeoutMs: TIMEOUT_MS,
-        });
+      // Cloudflare sandboxes are addressed by a stable name rather than a
+      // generated id, so a project always maps to the same sandbox.
+      const id = project?.sandboxId ?? sandboxIdForProject(event.data.projectId);
 
-        return sandbox.sandboxId;
-      }
-
-      const createdSandbox = await Sandbox.create("forgeai-v1", {
-        timeoutMs: TIMEOUT_MS,
+      // The container may have idled out and lost its filesystem since the last
+      // run, so hand it the latest snapshot to restore from. The preview URL is
+      // resolved later by `get-sandbox-url`, once the agent has actually
+      // produced something worth previewing.
+      await ensureSandbox(id, {
+        backup: project?.sandboxBackup as SandboxBackup | null,
+        url: false,
       });
 
       await db.project.update({
         where: { id: event.data.projectId },
-        data: { sandboxId: createdSandbox.sandboxId },
+        data: { sandboxId: id },
       });
 
-      return createdSandbox.sandboxId;
+      return id;
     });
 
     const getPrevMessages = await step.run("get-prev-messages", async () => {
@@ -323,15 +328,12 @@ export const codeAgentFunction = inngest.createFunction(
             const localFile = `${publicDir}/${safeSlug}.jpg`;
             const publicPath = `/assets/unsplash/${safeSlug}.jpg`;
 
-            await sandbox.commands.run(`mkdir -p "${publicDir}"`);
+            await sandbox.files.makeDir(publicDir);
 
-            const cmd = `curl -L --fail --silent --show-error "${imageUrl}" -o "${localFile}"`;
-            const result = await sandbox.commands.run(cmd);
-
-            if (result.exitCode !== 0) {
-              const msg = (result.stderr || result.stdout || "").slice(0, 800);
-              throw new Error(`Failed to download Unsplash image: ${msg}`);
-            }
+            // `commands.run` throws on a non-zero exit code.
+            await sandbox.commands.run(
+              `curl -L --fail --silent --show-error "${imageUrl}" -o "${localFile}"`,
+            );
 
             const photographerName = photo.user.name ?? null;
             const photographerUsername = photo.user.username ?? null;
@@ -418,11 +420,16 @@ export const codeAgentFunction = inngest.createFunction(
           "Generating sandbox url...",
         ),
       );
-      const sandbox = await getSandbox(sandboxId);
+      const { url } = await ensureSandbox(sandboxId);
 
-      const host = sandbox.getHost(3000);
+      if (!url) throw new Error("Sandbox did not return a preview url");
 
-      return `https://${host}`;
+      await db.project.update({
+        where: { id: event.data.projectId },
+        data: { sandboxUrl: url },
+      });
+
+      return url;
     });
 
     const projectName = await runNamingAgent(
@@ -481,6 +488,32 @@ export const codeAgentFunction = inngest.createFunction(
           },
         },
       });
+    });
+
+    // Containers wipe their filesystem when they idle out, so the project only
+    // survives as an R2 snapshot. A failed backup must not fail the run — the
+    // previous snapshot stays valid and the next run tries again.
+    await step.run("backup-sandbox", async () => {
+      await publish(
+        await projectChannel(event.data.projectId).projectInfo(
+          "Saving sandbox snapshot...",
+        ),
+      );
+
+      try {
+        const backup = await createSandboxBackup(sandboxId);
+
+        await db.project.update({
+          where: { id: event.data.projectId },
+          // The handle is opaque JSON as far as Prisma is concerned.
+          data: { sandboxBackup: { ...backup } },
+        });
+
+        return { ok: true };
+      } catch (error) {
+        console.error("Failed to back up sandbox", sandboxId, error);
+        return { ok: false };
+      }
     });
 
     await publish(

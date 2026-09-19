@@ -1,0 +1,12 @@
+# Shared secret the Next.js app sends as `Authorization: Bearer <token>`.
+# Must equal CLOUDFLARE_SANDBOX_TOKEN in the app's .env.
+CONTROL_TOKEN=change-me-to-a-long-random-string
+
+# R2 credentials used for /home/user/project snapshots. Create them under
+# R2 -> Manage API Tokens with Object Read & Write on the backup bucket.
+R2_ACCESS_KEY_ID=
+R2_SECRET_ACCESS_KEY=
+
+# `wrangler dev` cannot use presigned URLs or FUSE, so backups must go through
+# the R2 binding directly. Leave unset (or "false") when deployed.
+LOCAL_BACKUPS=true

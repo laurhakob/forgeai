@@ -1,0 +1,19 @@
+{
+  "name": "forgeai-sandbox",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "wrangler dev --port 8787",
+    "deploy": "wrangler deploy",
+    "typecheck": "tsc --noEmit",
+    "types": "wrangler types"
+  },
+  "dependencies": {
+    "@cloudflare/sandbox": "0.12.9"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260915.1",
+    "typescript": "^5.9.3",
+    "wrangler": "^4.132.0"
+  }
+}

@@ -96,7 +96,7 @@ export default function FileExplorer({
   return (
     <>
       <ResizablePanelGroup
-        direction="horizontal"
+        orientation="horizontal"
         className="h-dvh w-dvw overflow-hidden"
       >
         <ResizablePanel defaultSize={20} minSize={20}>

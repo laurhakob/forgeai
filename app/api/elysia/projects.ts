@@ -4,6 +4,7 @@ import Elysia from "elysia";
 import { z } from "zod";
 import { clerk } from "./clerk";
 import { requirePro } from "@/lib/pro-feature";
+import { ensureSandbox, type SandboxBackup } from "@/lib/sandbox";
 
 export const projects = new Elysia({ prefix: "/projects" })
   .use(clerk())
@@ -69,6 +70,43 @@ export const projects = new Elysia({ prefix: "/projects" })
 
     return userProjects;
   })
+  // Quick-tunnel preview URLs die with the container, so the stored one on a
+  // CodeFragment is only a historical record. The client asks for a live URL
+  // here, which also wakes the sandbox and restores it from its last snapshot.
+  .post(
+    "/:projectId/preview",
+    async ({ auth, params, status }) => {
+      const { userId } = auth();
+
+      if (!userId) return status(401, { error: "Unauthorized" });
+
+      const project = await db.project.findFirst({
+        where: { id: params.projectId, userId },
+        select: { id: true, sandboxId: true, sandboxBackup: true },
+      });
+
+      if (!project) return status(404, { error: "Project not found" });
+      if (!project.sandboxId) {
+        return status(409, { error: "Project has no sandbox yet" });
+      }
+
+      const { url } = await ensureSandbox(project.sandboxId, {
+        backup: project.sandboxBackup as SandboxBackup | null,
+      });
+
+      await db.project.update({
+        where: { id: project.id },
+        data: { sandboxUrl: url },
+      });
+
+      return { url };
+    },
+    {
+      params: z.object({
+        projectId: z.string().min(3, "Project Id is required"),
+      }),
+    },
+  )
   .delete(
     "/:projectId",
     async ({ auth, params, status }) => {
